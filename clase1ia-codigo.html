@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movable Rectangles</title>
+    <style>
+        /* Basic styling for the page */
+        body {
+            background-color: #000; /* Black background */
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars from appearing when rectangles are near the edge */
+            height: 100vh;
+            width: 100vw;
+            user-select: none; /* Prevent text selection during drag */
+        }
+
+        /* Styling for the rectangle elements */
+        .rectangle {
+            position: absolute; /* Allows for positioning with top/left and movement */
+            border-style: solid;
+            border-width: 3px; /* Border thickness */
+            cursor: grab; /* Indicates the element can be grabbed */
+            box-sizing: border-box; /* Ensures padding/border are inside the width/height */
+        }
+    </style>
+</head>
+<body>
+
+    <script>
+        const NUM_RECTANGLES = 8;
+        const MIN_SIZE = 200; // Minimum size (width/height) in px
+        const MAX_SIZE = 500; // Maximum size (width/height) in px
+        const BORDER_COLORS = [
+            '#FF6347', // Tomato
+            '#4682B4', // SteelBlue
+            '#3CB371', // MediumSeaGreen
+            '#FFD700', // Gold
+            '#BA55D3', // MediumOrchid
+            '#00FFFF', // Cyan
+            '#FFA07A', // LightSalmon
+            '#DA70D6'  // Orchid
+        ];
+
+        let activeRect = null; // Stores the currently dragged rectangle element
+        let offset = { x: 0, y: 0 }; // Stores the mouse offset from the rectangle's top-left corner
+
+        /**
+         * Generates a random integer between min (inclusive) and max (inclusive).
+         */
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        /**
+         * Creates a single rectangle element with random properties.
+         */
+        function createRectangle(index) {
+            const rect = document.createElement('div');
+            rect.classList.add('rectangle');
+            
+            // Random size (width and height are the same for simplicity)
+            const size = getRandomInt(MIN_SIZE, MAX_SIZE);
+            rect.style.width = `${size}px`;
+            rect.style.height = `${size}px`;
+
+            // Assign a unique border color
+            const borderColor = BORDER_COLORS[index % BORDER_COLORS.length];
+            rect.style.borderColor = borderColor;
+            
+            // Set background color with 50% opacity
+            // Convert hex to rgba with 0.5 opacity
+            const hexColor = borderColor.substring(1); // Remove #
+            const r = parseInt(hexColor.substr(0, 2), 16);
+            const g = parseInt(hexColor.substr(2, 2), 16);
+            const b = parseInt(hexColor.substr(4, 2), 16);
+            rect.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+            
+            // Initial random position
+            // We use setTimeout to ensure document.body.clientWidth is calculated correctly
+            // after the initial render, but for simplicity, we'll use a direct calculation here.
+            // Note: The position will be finalized on window load/resize.
+            const maxWidth = window.innerWidth - size;
+            const maxHeight = window.innerHeight - size;
+
+            // Ensure the rectangle is entirely within the viewport
+            rect.style.left = `${getRandomInt(0, maxWidth > 0 ? maxWidth : 0)}px`;
+            rect.style.top = `${getRandomInt(0, maxHeight > 0 ? maxHeight : 0)}px`;
+
+            // Add event listeners for dragging
+            rect.addEventListener('mousedown', startDrag);
+            rect.addEventListener('touchstart', startDrag); // For touch devices
+            
+            document.body.appendChild(rect);
+        }
+
+        /**
+         * Initiates the drag operation on mousedown or touchstart.
+         */
+        function startDrag(e) {
+            e.preventDefault(); // Prevent default browser drag behavior
+            activeRect = this; // 'this' refers to the rectangle element
+            activeRect.style.cursor = 'grabbing'; // Change cursor to indicate dragging
+            
+            // Bring the active rectangle to the front
+            document.body.appendChild(activeRect); // Re-append to make it the last child (top z-index)
+            
+            // Change background opacity to 100% when active
+            const borderColor = activeRect.style.borderColor;
+            // Extract the color values from the borderColor
+            // The format is "rgb(r, g, b)" or a hex color
+            let r, g, b;
+            
+            if (borderColor.startsWith('rgb')) {
+                // Handle RGB format
+                const rgbValues = borderColor.match(/\d+/g);
+                r = rgbValues[0];
+                g = rgbValues[1];
+                b = rgbValues[2];
+            } else {
+                // Handle hex format
+                const hexColor = borderColor.substring(1); // Remove #
+                r = parseInt(hexColor.substr(0, 2), 16);
+                g = parseInt(hexColor.substr(2, 2), 16);
+                b = parseInt(hexColor.substr(4, 2), 16);
+            }
+            
+            activeRect.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 1.0)`;
+
+            // Determine if it's a touch event or a mouse event
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+
+            // Calculate the offset (distance from mouse to top-left of the rectangle)
+            const rectBounds = activeRect.getBoundingClientRect();
+            offset.x = clientX - rectBounds.left;
+            offset.y = clientY - rectBounds.top;
+
+            // Attach listeners to the whole document body to handle movement outside the rectangle
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchmove', drag);
+            document.addEventListener('touchend', endDrag);
+        }
+
+        /**
+         * Updates the rectangle's position on mousemove or touchmove.
+         */
+        function drag(e) {
+            if (!activeRect) return;
+
+            // Determine if it's a touch event or a mouse event
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+
+            // Calculate new position (window position - offset)
+            let newX = clientX - offset.x;
+            let newY = clientY - offset.y;
+            
+            // Get boundaries
+            const maxWidth = window.innerWidth - activeRect.offsetWidth;
+            const maxHeight = window.innerHeight - activeRect.offsetHeight;
+
+            // Constrain movement within the window margins (clamping)
+            newX = Math.max(0, Math.min(newX, maxWidth));
+            newY = Math.max(0, Math.min(newY, maxHeight));
+
+            // Apply new position
+            activeRect.style.left = `${newX}px`;
+            activeRect.style.top = `${newY}px`;
+        }
+
+        /**
+         * Ends the drag operation on mouseup or touchend.
+         */
+        function endDrag() {
+            if (!activeRect) return;
+            
+            activeRect.style.cursor = 'grab'; // Reset cursor
+            
+            // Reset background opacity to 50%
+            const borderColor = activeRect.style.borderColor;
+            let r, g, b;
+            
+            if (borderColor.startsWith('rgb')) {
+                // Handle RGB format
+                const rgbValues = borderColor.match(/\d+/g);
+                r = rgbValues[0];
+                g = rgbValues[1];
+                b = rgbValues[2];
+            } else {
+                // Handle hex format
+                const hexColor = borderColor.substring(1); // Remove #
+                r = parseInt(hexColor.substr(0, 2), 16);
+                g = parseInt(hexColor.substr(2, 2), 16);
+                b = parseInt(hexColor.substr(4, 2), 16);
+            }
+            
+            activeRect.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+            
+            activeRect = null; // Clear the active rectangle
+            
+            // Remove the document-wide listeners
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', endDrag);
+            document.removeEventListener('touchmove', drag);
+            document.removeEventListener('touchend', endDrag);
+        }
+        
+        /**
+         * Function to initialize all rectangles.
+         */
+        function initializeRectangles() {
+            // Remove existing rectangles (useful if the function is called on resize)
+            document.querySelectorAll('.rectangle').forEach(rect => rect.remove());
+
+            // Create the specified number of rectangles
+            for (let i = 0; i < NUM_RECTANGLES; i++) {
+                createRectangle(i);
+            }
+        }
+
+        // Initialize the rectangles when the page loads
+        window.addEventListener('load', initializeRectangles);
+        
+        // Optional: Re-initialize or reposition rectangles on window resize
+        // Re-initializing is simpler and ensures they fit, but you could also just update positions
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(initializeRectangles, 200); // Debounce
+        });
+
+    </script>
+</body>
+</html>
