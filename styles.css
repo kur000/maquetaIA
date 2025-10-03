@@ -1,0 +1,42 @@
+/* Basic styling for the page */
+body {
+    background-color: #000; /* Black background */
+    margin: 0;
+    overflow: hidden; /* Prevent scrollbars from appearing when rectangles are near the edge */
+    height: 100vh;
+    width: 100vw;
+    user-select: none; /* Prevent text selection during drag */
+}
+
+/* Styling for the rectangle elements */
+.rectangle {
+    position: absolute; /* Allows for positioning with top/left and movement */
+    border-style: solid;
+    border-width: 3px; /* Border thickness */
+    cursor: grab; /* Indicates the element can be grabbed */
+    box-sizing: border-box; /* Ensures padding/border are inside the width/height */
+    background-color: rgba(255, 255, 255, 0.3); /* Default background color */
+    z-index: 1; /* Ensure rectangles are visible */
+}
+
+/* Control panel styling */
+#controlPanel {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border-radius: 8px;
+    color: white;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 300px;
+}
+
+#sizeSlider {
+    width: 100%;
+    margin-top: 10px;
+}

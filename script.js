@@ -1,0 +1,235 @@
+// Constants
+const NUM_RECTANGLES = 8; // Number of rectangles to create
+const MIN_SIZE = 100; // Minimum size for rectangles
+const MAX_SIZE = 500; // Maximum size for rectangles
+const BORDER_COLORS = [
+    '#FF6347', // Tomato
+    '#4682B4', // SteelBlue
+    '#3CB371', // MediumSeaGreen
+    '#FFD700', // Gold
+    '#BA55D3', // MediumOrchid
+    '#00FFFF', // Cyan
+    '#FFA07A', // LightSalmon
+    '#DA70D6'  // Orchid
+];
+
+// Variables
+let currentSize = 300; // Default size for rectangles
+let activeRectangle = null; // Currently active (being dragged) rectangle
+let initialX, initialY; // Initial mouse position for drag
+let offsetX, offsetY; // Offset from mouse to rectangle corner
+
+// Function to create a rectangle
+function createRectangle(index) {
+    const rect = document.createElement('div');
+    rect.className = 'rectangle';
+    
+    // Set size based on current slider value
+    rect.style.width = `${currentSize}px`;
+    rect.style.height = `${currentSize}px`;
+    
+    // Assign a unique border color
+    const borderColor = BORDER_COLORS[index % BORDER_COLORS.length];
+    rect.style.borderColor = borderColor;
+    
+    // Set background color with 30% opacity based on border color
+    const hexColor = borderColor.substring(1); // Remove #
+    const r = parseInt(hexColor.substr(0, 2), 16);
+    const g = parseInt(hexColor.substr(2, 2), 16);
+    const b = parseInt(hexColor.substr(4, 2), 16);
+    rect.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.3)`;
+    
+    // Position randomly within the viewport (center-based)
+    const maxX = window.innerWidth - currentSize;
+    const maxY = window.innerHeight - currentSize;
+    // Calculate center position
+    const centerX = Math.floor(Math.random() * maxX) + (currentSize / 2);
+    const centerY = Math.floor(Math.random() * maxY) + (currentSize / 2);
+    // Set position based on center
+    rect.style.left = `${centerX - (currentSize / 2)}px`;
+    rect.style.top = `${centerY - (currentSize / 2)}px`;
+    
+    // Set z-index to ensure visibility
+    rect.style.zIndex = "1";
+    
+    // Add event listeners for drag functionality
+    rect.addEventListener('mousedown', startDrag);
+    
+    // Add to the document
+    document.body.appendChild(rect);
+    
+    return rect;
+}
+
+// Function to start dragging a rectangle
+function startDrag(e) {
+    activeRectangle = e.target;
+    
+    // Change cursor style
+    activeRectangle.style.cursor = 'grabbing';
+    
+    // Calculate the initial position
+    initialX = e.clientX;
+    initialY = e.clientY;
+    
+    // Calculate the offset from the mouse to the top-left corner of the rectangle
+    const rectBounds = activeRectangle.getBoundingClientRect();
+    offsetX = initialX - rectBounds.left;
+    offsetY = initialY - rectBounds.top;
+    
+    // Bring the active rectangle to the front
+    document.body.appendChild(activeRectangle);
+    
+    // Change background opacity to 100% when active
+    const borderColor = activeRectangle.style.borderColor;
+    let r, g, b;
+    
+    if (borderColor.startsWith('rgb')) {
+        // Handle RGB format
+        const rgbValues = borderColor.match(/\d+/g);
+        r = rgbValues[0];
+        g = rgbValues[1];
+        b = rgbValues[2];
+    } else {
+        // Handle hex format
+        const hexColor = borderColor.substring(1); // Remove #
+        r = parseInt(hexColor.substr(0, 2), 16);
+        g = parseInt(hexColor.substr(2, 2), 16);
+        b = parseInt(hexColor.substr(4, 2), 16);
+    }
+    
+    activeRectangle.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 1.0)`;
+    
+    // Add event listeners for drag and end drag
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', endDrag);
+    
+    // Prevent default behavior to avoid text selection during drag
+    e.preventDefault();
+}
+
+// Function to handle dragging
+function drag(e) {
+    if (activeRectangle) {
+        // Calculate new position
+        const x = e.clientX - offsetX;
+        const y = e.clientY - offsetY;
+        
+        // Apply new position
+        activeRectangle.style.left = `${x}px`;
+        activeRectangle.style.top = `${y}px`;
+    }
+}
+
+// Function to end dragging
+function endDrag() {
+    if (activeRectangle) {
+        // Reset cursor style
+        activeRectangle.style.cursor = 'grab';
+        
+        // Reset background opacity to 30%
+        const borderColor = activeRectangle.style.borderColor;
+        let r, g, b;
+        
+        if (borderColor.startsWith('rgb')) {
+            // Handle RGB format
+            const rgbValues = borderColor.match(/\d+/g);
+            r = rgbValues[0];
+            g = rgbValues[1];
+            b = rgbValues[2];
+        } else {
+            // Handle hex format
+            const hexColor = borderColor.substring(1); // Remove #
+            r = parseInt(hexColor.substr(0, 2), 16);
+            g = parseInt(hexColor.substr(2, 2), 16);
+            b = parseInt(hexColor.substr(4, 2), 16);
+        }
+        
+        activeRectangle.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.3)`;
+        
+        // Remove event listeners
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('mouseup', endDrag);
+        
+        // Reset active rectangle
+        activeRectangle = null;
+    }
+}
+
+// Function to initialize rectangles
+function initializeRectangles() {
+    // Remove existing rectangles
+    document.querySelectorAll('.rectangle').forEach(rect => rect.remove());
+    
+    // Create new rectangles
+    for (let i = 0; i < NUM_RECTANGLES; i++) {
+        createRectangle(i);
+    }
+    
+    console.log("Rectangles initialized:", document.querySelectorAll('.rectangle').length);
+}
+
+// Function to update rectangle size
+function updateRectangleSize(newSize) {
+    // Update current size
+    currentSize = newSize;
+    
+    // Update size display
+    document.getElementById('sizeValue').textContent = `${currentSize}px`;
+    
+    // Update all rectangles
+    document.querySelectorAll('.rectangle').forEach(rect => {
+        // Get current position and size
+        const oldSize = parseInt(rect.style.width) || currentSize;
+        const oldLeft = parseInt(rect.style.left) || 0;
+        const oldTop = parseInt(rect.style.top) || 0;
+        
+        // Calculate the center point of the rectangle
+        const centerX = oldLeft + oldSize / 2;
+        const centerY = oldTop + oldSize / 2;
+        
+        // Set new size
+        rect.style.width = `${currentSize}px`;
+        rect.style.height = `${currentSize}px`;
+        
+        // Calculate new position to maintain the center point
+        const newLeft = centerX - currentSize / 2;
+        const newTop = centerY - currentSize / 2;
+        
+        // Ensure rectangles stay within viewport
+        const maxX = window.innerWidth - currentSize;
+        const maxY = window.innerHeight - currentSize;
+        
+        // Adjust if needed
+        let adjustedLeft = Math.max(0, Math.min(newLeft, maxX));
+        let adjustedTop = Math.max(0, Math.min(newTop, maxY));
+        
+        // Update position
+        rect.style.left = `${adjustedLeft}px`;
+        rect.style.top = `${adjustedTop}px`;
+    });
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Set initial size value display
+    document.getElementById('sizeValue').textContent = `${currentSize}px`;
+    
+    // Initialize rectangles
+    initializeRectangles();
+    
+    // Set up slider event listener
+    const slider = document.getElementById('sizeSlider');
+    slider.value = currentSize;
+    slider.addEventListener('input', (e) => {
+        updateRectangleSize(parseInt(e.target.value));
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        // Update rectangles to ensure they stay within the viewport
+        updateRectangleSize(currentSize);
+    });
+    
+    console.log("DOM fully loaded and rectangles initialized");
+});
